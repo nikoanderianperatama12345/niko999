@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Niko999</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: linear-gradient(to bottom right, #111, #222);
+      color: white;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    header, .page {
+      padding: 20px;
+    }
+    button, input, select {
+      padding: 10px;
+      margin: 10px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+    }
+    button {
+      background: #00ffcc;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .small-button {
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+    .hidden {
+      display: none;
+    }
+    #slot {
+      font-size: 60px;
+      margin: 20px;
+    }
+    img.qr {
+      width: 200px;
+      margin: 20px auto;
+    }
+    #saldoBox {
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+    #windra {
+      width: 80px;
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: none;
+      animation: fadeInOut 2s forwards;
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; }
+      20% { opacity: 1; }
+      80% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+    #riwayatBox {
+      text-align: left;
+      margin: 20px auto;
+      width: 90%;
+      max-width: 400px;
+      background: #333;
+      padding: 15px;
+      border-radius: 10px;
+    }
+    #riwayatList {
+      list-style: none;
+      padding-left: 0;
+    }
+    #riwayatList li {
+      border-bottom: 1px solid #555;
+      padding: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Niko999</h1>
+  </header>
+
+  <!-- AUDIO -->
+  <audio id="startSound" src="slot.mp3"></audio>
+  <audio id="winSound" src="niko.mp3"></audio>
+  <audio id="withdrawSound" src="withdraw.mp3"></audio>
+
+  <!-- Gambar Windra -->
+  <img src="https://via.placeholder.com/80x80.png?text=Windra" id="windra" alt="Windra">
+
+  <!-- Login Page -->
+  <div id="loginPage" class="page">
+    <h2>Login / Daftar</h2>
+    <input id="username" placeholder="Username"><br>
+    <input id="password" type="password" placeholder="Password"><br>
+    <button onclick="login()">Masuk</button>
+  </div>
+
+  <!-- Dashboard Page -->
+  <div id="dashboardPage" class="page hidden">
+    <h2>Selamat datang, <span id="userNameShow"></span></h2>
+    <div id="saldoBox">Saldo: Rp <span id="saldo">0</span></div>
+    <div id="gameSection" class="hidden">
+      <h3>Slot Buah-buahan</h3>
+      <label for="bet">Taruhan:</label>
+      <select id="bet">
+        <option value="200">Rp 200</option>
+        <option value="2000">Rp 2000</option>
+        <option value="5000">Rp 5000</option>
+      </select><br>
+      <div id="slot">🍉 🍒 🍋</div>
+      <button class="small-button" onclick="mainGame()">START</button>
+    </div>
+    <br>
+    <button onclick="goTo('topupPage')">Topup</button>
+    <button onclick="goTo('withdrawPage')">Tarik Dana</button>
+    <button onclick="logout()">Logout</button>
+    <button onclick="toggleSound()" id="soundBtn">Suara: Aktif</button>
+
+    <div id="riwayatBox">
+      <h3>Riwayat</h3>
+      <ul id="riwayatList"></ul>
+    </div>
+  </div>
+
+  <!-- Topup Page -->
+  <div id="topupPage" class="page hidden">
+    <h3>Topup Saldo</h3>
+    <p>Kirim ke Dana: <b>083866970997</b></p>
+    <img src="niko.jpg" class="qr"><br>
+    <input id="topupNominal" type="number" placeholder="Jumlah Topup"><br>
+    <input type="file" id="bukti" accept="image/*"><br>
+    <button onclick="submitBukti()">Kirim Bukti</button><br>
+    <button onclick="goTo('dashboardPage')">Kembali</button>
+  </div>
+
+  <!-- Withdraw Page -->
+  <div id="withdrawPage" class="page hidden">
+    <h3>Tarik ke Dana</h3>
+    <input id="wdNama" placeholder="Nama di Dana"><br>
+    <input id="wdNomor" placeholder="Nomor Dana"><br>
+    <button onclick="submitWithdraw()">Kirim Penarikan</button><br>
+    <button onclick="goTo('dashboardPage')">Kembali</button>
+  </div>
+
+  <script>
+    let saldo = 0;
+    let sudahTopup = false;
+    let suaraAktif = true;
+    const buah = ["🍉", "🍋", "🍒", "🍇", "🍌", "🍍", "🍊"];
+    let startAudio = document.getElementById("startSound");
+
+    function playSound(id) {
+      if (!suaraAktif) return;
+      const audio = document.getElementById(id);
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.play();
+      }
+    }
+
+    function toggleSound() {
+      suaraAktif = !suaraAktif;
+      document.getElementById("soundBtn").innerText = "Suara: " + (suaraAktif ? "Aktif" : "Mati");
+    }
+
+    function simpanData() {
+      localStorage.setItem("saldo", saldo);
+      localStorage.setItem("sudahTopup", sudahTopup);
+      localStorage.setItem("riwayat", document.getElementById("riwayatList").innerHTML);
+    }
+
+    function muatData() {
+      saldo = parseInt(localStorage.getItem("saldo")) || 0;
+      sudahTopup = localStorage.getItem("sudahTopup") === "true";
+      document.getElementById("riwayatList").innerHTML = localStorage.getItem("riwayat") || "";
+    }
+
+    function tambahRiwayat(teks) {
+      let li = document.createElement("li");
+      li.innerText = teks;
+      document.getElementById("riwayatList").prepend(li);
+      simpanData();
+    }
+
+    function login() {
+      let user = document.getElementById("username").value;
+      let pass = document.getElementById("password").value;
+      if (user && pass) {
+        document.getElementById("loginPage").classList.add("hidden");
+        document.getElementById("dashboardPage").classList.remove("hidden");
+        document.getElementById("userNameShow").innerText = user;
+        muatData();
+        updateSaldo();
+      } else {
+        alert("Isi username dan password");
+      }
+    }
+
+    function logout() {
+      location.reload();
+    }
+
+    function updateSaldo() {
+      document.getElementById("saldo").innerText = saldo;
+      document.getElementById("gameSection").classList.toggle("hidden", !sudahTopup);
+      simpanData();
+    }
+
+    function goTo(pageId) {
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      document.getElementById(pageId).classList.remove('hidden');
+    }
+
+    function submitBukti() {
+      let file = document.getElementById("bukti").files[0];
+      let nominal = parseInt(document.getElementById("topupNominal").value);
+      if (file && nominal > 0) {
+        alert("Bukti diterima. Saldo akan ditambahkan.");
+        saldo += nominal;
+        sudahTopup = true;
+        tambahRiwayat("Topup Rp " + nominal);
+        goTo("dashboardPage");
+        updateSaldo();
+      } else {
+        alert("Upload bukti dan isi nominal!");
+      }
+    }
+
+    async function mainGame() {
+      if (suaraAktif) {
+        startAudio.pause();
+        startAudio.currentTime = 0;
+        startAudio.play();
+      }
+
+      const taruhan = parseInt(document.getElementById("bet").value);
+      if (saldo < taruhan) {
+        alert("Saldo tidak cukup!");
+        startAudio.pause();
+        startAudio.currentTime = 0;
+        return;
+      }
+
+      let s1, s2, s3;
+      const slot = document.getElementById("slot");
+
+      for (let i = 0; i < 20; i++) {
+        s1 = buah[Math.floor(Math.random() * buah.length)];
+        s2 = buah[Math.floor(Math.random() * buah.length)];
+        s3 = buah[Math.floor(Math.random() * buah.length)];
+        slot.innerText = `${s1} ${s2} ${s3}`;
+        await new Promise(r => setTimeout(r, 50 + i * 20));
+      }
+
+      // Hentikan suara start
+      startAudio.pause();
+      startAudio.currentTime = 0;
+
+      if (s1 === s2 && s2 === s3) {
+        let menang = taruhan * 2;
+        saldo += menang;
+        updateSaldo();
+        alert("MENANG! Kamu dapat Rp " + menang);
+        tambahRiwayat("MENANG Rp " + menang);
+        document.getElementById("windra").style.display = "block";
+        playSound("winSound");
+        setTimeout(() => {
+          document.getElementById("windra").style.display = "none";
+        }, 2000);
+      } else {
+        saldo -= taruhan;
+        updateSaldo();
+        alert("KALAH! Saldo berkurang Rp " + taruhan);
+        tambahRiwayat("KALAH Rp " + taruhan);
+      }
+    }
+
+    function submitWithdraw() {
+      let nama = document.getElementById("wdNama").value;
+      let nomor = document.getElementById("wdNomor").value;
+      if (nama && nomor && saldo > 0) {
+        alert("Penarikan dikirim ke Dana:\n" + nama + " (" + nomor + ") sebesar Rp " + saldo);
+        playSound("withdrawSound");
+        tambahRiwayat("Tarik Rp " + saldo + " ke " + nama + " (" + nomor + ")");
+        saldo = 0;
+        updateSaldo();
+      } else {
+        alert("Isi semua data dan pastikan saldo cukup");
+      }
+    }
+  </script>
+</body>
+</html>
